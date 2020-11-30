@@ -1,0 +1,161 @@
+#include "gpio.h"
+#include "timer.h"
+
+void main(void)
+{
+	unsigned int numbers[16] = {0b00111111,
+		                    0b00000110,
+				    0b01011011,
+                                    0b01001111,
+                                    0b01100110,
+          		            0b01101101,
+ 			            0b01111101,
+			            0b00000111,
+			            0b01111111,
+			            0b01100111,
+			            0b01110111,
+          		            0b01111100,
+			            0b00111001,
+			            0b01011110,
+	   	   	            0b01111001,
+			            0b01110001 };
+ 
+
+	void set_number_on(unsigned int num){
+		for (unsigned int i = 20; i < 28; i++){
+			if (gpio_get_function(i) != GPIO_FUNC_OUTPUT) {
+				gpio_set_output(i);
+			}
+			if (num & (1 << (i % 20))){
+        			gpio_write(i, 1);
+			} 
+		}
+	}	
+
+	void set_number_off(unsigned int num){
+      		for (unsigned int i = 20; i < 28; i++) {
+			if (num & (1 << (i % 20))){
+        			gpio_write(i, 0);
+			}	 	
+      		}
+	}
+
+	void turn_on_digit(unsigned int digit){	
+		if (gpio_get_function(digit) != GPIO_FUNC_OUTPUT) {
+			gpio_set_output(digit+10);
+		}
+		gpio_write(13 - digit, 1);
+	}
+  	  
+	void turn_off_digit(unsigned int digit){	
+		gpio_write(13 - digit, 0);
+	}  	  
+      
+
+	unsigned int min_sec_selector(unsigned int digit, unsigned int seconds){
+		if (digit == 0){
+			return (seconds % 10);
+		}
+		else if (digit == 1) {
+			return (seconds/10 % 6);
+		} 
+		else if (digit == 2) {
+			return (seconds/60 % 10);
+		}
+		else {
+			return (seconds/600 % 6);
+		}
+      	}
+
+      	void flash_light(unsigned int digit, unsigned int display){
+		turn_on_digit(digit);
+		set_number_on(numbers[display]);
+		timer_delay_us(2500);
+		set_number_off(numbers[display]);
+		turn_off_digit(digit);
+					
+      	}	
+
+	unsigned int set_time(){
+		timer_delay(1);
+		unsigned int counter = 0;
+		unsigned int set_time = 0; 
+		unsigned int digit = 0;
+		unsigned int display = 0;
+		
+		for(;;){
+			if(!gpio_read(GPIO_PIN3)){
+				while(!gpio_read(GPIO_PIN3)){
+					counter += 1;
+					timer_delay_ms(500);
+					if(counter > 10){return(set_time);}
+				}
+				set_time += 1;
+				counter += 1;
+				timer_delay_ms(500);
+			}
+			else if(!gpio_read(GPIO_PIN2)){
+				set_time += 60;
+				timer_delay_ms(500);
+			}
+			else{
+				counter = 0;
+			}	
+			display = min_sec_selector(digit, set_time);	
+			flash_light(digit, display);
+			if (digit == 3) {
+				digit = 0;
+			}
+			else {
+				digit += 1;
+			}
+		}	
+	}
+	
+	for(;;){
+		unsigned int digit = 0;
+		unsigned int dash = 0b01000000;
+		while(gpio_read(GPIO_PIN2) && gpio_read(GPIO_PIN3)){
+			turn_on_digit(digit);
+			set_number_on(dash);
+			timer_delay_us(5);
+			turn_off_digit(digit);
+			if (digit == 3) {
+				digit = 0;
+			}
+			else {
+				digit += 1;
+			}		
+		}	
+		set_number_off(dash);
+		unsigned int start = timer_get_ticks();
+		unsigned int set_t = 0;
+		digit = 0;
+		unsigned int display = 0;
+		unsigned int seconds = 0;
+		unsigned int long_press = 0;
+		for(;;){	
+			if(!gpio_read(GPIO_PIN3)){
+				while(!gpio_read(GPIO_PIN3)){
+					long_press += 1;
+					timer_delay_ms(500);
+					if(long_press > 5){
+						set_t = set_time();
+						start = timer_get_ticks();
+					}
+				}
+			}
+			seconds = (timer_get_ticks()+set_t - start)/1000000;
+			display = min_sec_selector(digit, seconds);
+			flash_light(digit, display);
+			if (digit == 3) {
+				digit = 0;
+			}
+			else {
+				digit += 1;
+			}
+			
+		}
+		
+	}
+}	

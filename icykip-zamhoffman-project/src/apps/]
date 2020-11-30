@@ -1,0 +1,65 @@
+#include "gpio.h"
+#include "timer.h"
+
+void main(void)
+{
+    unsigned int numbers[16] = {0b00111111,
+			       0b00000110,
+           		       0b01011011,
+                               0b01001111,
+                               0b01100110,
+          		       0b01101101,
+ 			       0b01111101,
+			       0b00000111,
+			       0b01111111,
+			       0b01100111,
+			       0b01110111,
+          		       0b01111100,
+			       0b00111001,
+			       0b01011110,
+	   	   	       0b01111001,
+			       0b01110001 };
+ 
+
+      void set_number_on(unsigned int num){
+      	for (unsigned int i = 20; i < 28; i++){
+		gpio_set_output(i);
+		if (num & (1 << (i % 20))){
+        		gpio_write(i, 1);
+		} 
+      	}
+      }
+
+      void set_number_off(unsigned int num){
+      	for (unsigned int i = 20; i < 28; i++){
+		gpio_set_output(i);
+		if (num & (1 << (i % 20))){
+        		gpio_write(i, 0);
+		} 
+      	}
+      }
+
+      void turn_on_digit(unsigned int digit){	
+	gpio_set_output(digit+10);
+	gpio_write(digit+10, 1);
+      }
+  	  
+      void turn_off_digit(unsigned int digit){	
+	gpio_set_output(digit+10);
+	gpio_write(digit+10, 0);
+      }  	  
+     
+    
+      for (;;){ 
+     	 turn_on_digit(0);
+     	 set_number_on(numbers[1]);
+	 timer_delay_us(250);
+	 set_number_off(numbers[1]);
+	 turn_off_digit(0);
+         turn_on_digit(1);
+     	 set_number_on(numbers[5]);
+	 timer_delay_us(250);
+	 set_number_off(numbers[5]);
+	 turn_off_digit(1);
+      }
+}
